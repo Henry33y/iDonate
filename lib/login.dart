@@ -53,10 +53,10 @@ class LoginScreen extends StatelessWidget {
                     onPressed: () {
                     Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (context) => HomePage()),
+                    MaterialPageRoute(builder: (context) => const HomePage()),
                     );
                   },
-                    icon: FaIcon(FontAwesomeIcons.google, color: Colors.white, size: 20),
+                    icon: const FaIcon(FontAwesomeIcons.google, color: Colors.white, size: 20),
                     label: Text(
                       "Log in",
                       style: TextStyle(

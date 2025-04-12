@@ -2,10 +2,17 @@
 // ignore_for_file: prefer_const_constructors
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'splash_screen.dart';  // Import the splash screen
+// Updated import
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -14,11 +21,37 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(debugShowCheckedModeBanner: false, 
-     home: SplashScreen(),
-     theme: ThemeData(
-      fontFamily: 'Monsterrat'
-     )
-     );
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'iDonate',
+      theme: ThemeData(
+        primaryColor: const Color(0xFFCC2B2B),
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFFCC2B2B),
+          secondary: Color(0xFFCC2B2B),
+        ),
+      ),
+      darkTheme: ThemeData.dark().copyWith(
+        primaryColor: const Color(0xFFCC2B2B),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFFCC2B2B),
+          secondary: Color(0xFFCC2B2B),
+        ),
+      ),
+      themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      home: const SplashScreen(),
+    );
+  }
+}
+
+// Theme provider moved to main.dart for better organization
+class ThemeProvider extends ChangeNotifier {
+  bool _isDarkMode = false;
+  bool get isDarkMode => _isDarkMode;
+
+  void toggleTheme() {
+    _isDarkMode = !_isDarkMode;
+    notifyListeners();
   }
 }
