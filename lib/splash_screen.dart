@@ -15,15 +15,16 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+  late Animation<double> _pulseAnimation;
   bool _disposed = false;
 
   @override
   void initState() {
     super.initState();
     
-    // Initialize animation controller with shorter duration
+    // Initialize animation controller with longer duration
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 3000),
       vsync: this,
     );
 
@@ -31,7 +32,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.65, curve: Curves.easeIn),
+        curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
       ),
     );
 
@@ -39,19 +40,43 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.65, curve: Curves.easeOutBack),
+        curve: const Interval(0.0, 0.5, curve: Curves.easeOutBack),
+      ),
+    );
+
+    // Create pulse animation
+    _pulseAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 1.1),
+        weight: 1,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.1, end: 1.0),
+        weight: 1,
+      ),
+    ]).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.5, 1.0, curve: Curves.easeInOut),
       ),
     );
 
     // Start the animation
     _controller.forward();
 
-    // Navigate after animation completion with a small delay
-    Future.delayed(const Duration(milliseconds: 2000), () {
+    // Navigate after a longer delay
+    Future.delayed(const Duration(milliseconds: 4000), () {
       if (!_disposed) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const LoginScreen(),
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 800),
           ),
         );
       }
@@ -79,14 +104,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 return Opacity(
                   opacity: _fadeAnimation.value,
                   child: Transform.scale(
-                    scale: _scaleAnimation.value,
+                    scale: _scaleAnimation.value * _pulseAnimation.value,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           "iDonate",
                           style: TextStyle(
-                            fontSize: MediaQuery.of(context).size.width * 0.12,
+                            fontSize: MediaQuery.of(context).size.width * 0.15,
                             fontFamily: 'Montserrat',
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -96,7 +121,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                         Text(
                           "Save Lives, Donate Blood",
                           style: TextStyle(
-                            fontSize: MediaQuery.of(context).size.width * 0.04,
+                            fontSize: MediaQuery.of(context).size.width * 0.045,
                             fontFamily: 'Montserrat',
                             color: Colors.white.withOpacity(0.9),
                           ),

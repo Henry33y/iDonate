@@ -10,6 +10,7 @@ import 'pages/compatibility_chart_page.dart';
 import 'pages/request_blood_page.dart';
 import 'pages/donate_page.dart';
 import 'main.dart';  // Import for ThemeProvider
+import 'widgets/hover_button.dart';  // Import the new HoverButton widget
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -275,35 +276,28 @@ class HomeContent extends StatelessWidget {
   }
 
   Widget _buildActionCard(BuildContext context, String title, IconData icon, VoidCallback onTap) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 32,
-                color: const Color(0xFFCC2B2B),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
+    return HoverButton(
+      onPressed: onTap,
+      backgroundColor: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 32,
+            color: const Color(0xFFCC2B2B),
           ),
-        ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

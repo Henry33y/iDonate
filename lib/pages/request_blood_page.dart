@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class RequestBloodPage extends StatefulWidget {
   const RequestBloodPage({super.key});
@@ -8,97 +7,102 @@ class RequestBloodPage extends StatefulWidget {
   State<RequestBloodPage> createState() => _RequestBloodPageState();
 }
 
-class _RequestBloodPageState extends State<RequestBloodPage> {
+class _RequestBloodPageState extends State<RequestBloodPage> with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  
   String? selectedGenotype;
   String? selectedBloodGroup;
   String? selectedUrgencyLevel;
   String? selectedPreferredDonor;
-  final locationController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
 
-  final List<String> genotypes = ['AA', 'AS', 'SS'];
-  final List<String> bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-  final List<String> urgencyLevels = ['Very Urgent', 'Urgent', 'Not Urgent'];
-  final List<String> preferredDonors = ['Any', 'Male', 'Female'];
+  final List<String> genotypes = ['AA', 'AS', 'SS', 'AC'];
+  final List<String> bloodGroups = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+  final List<String> urgencyLevels = ['Critical', 'Urgent', 'Standard'];
+  final List<String> preferredDonors = ['Any', 'Family/Friend', 'Voluntary'];
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+    _animationController.forward();
+  }
 
   @override
   void dispose() {
-    locationController.dispose();
+    _animationController.dispose();
+    _locationController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFFCC2B2B),
-        elevation: 0,
-        title: const Text(
-          'Request for Blood',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-            letterSpacing: 0.5,
-          ),
-        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDarkMode 
-              ? [const Color(0xFF1F1F1F), const Color(0xFF121212)]
-              : [Colors.white, const Color(0xFFF5F5F5)],
-          ),
+        title: const Text(
+          'Request for Blood',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
+      ),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildDropdownField(
-                'Genotype',
-                selectedGenotype,
-                genotypes,
-                (value) => setState(() => selectedGenotype = value),
-                FontAwesomeIcons.dna,
-              ),
-              const SizedBox(height: 16),
-              _buildDropdownField(
-                'Blood Group',
-                selectedBloodGroup,
-                bloodGroups,
-                (value) => setState(() => selectedBloodGroup = value),
-                FontAwesomeIcons.droplet,
-              ),
-              const SizedBox(height: 16),
-              _buildDropdownField(
-                'Urgency Level',
-                selectedUrgencyLevel,
-                urgencyLevels,
-                (value) => setState(() => selectedUrgencyLevel = value),
-                Icons.timer,
-              ),
-              const SizedBox(height: 16),
-              _buildLocationField(),
-              const SizedBox(height: 16),
-              _buildDropdownField(
-                'Preferred Donor',
-                selectedPreferredDonor,
-                preferredDonors,
-                (value) => setState(() => selectedPreferredDonor = value),
-                Icons.person,
-              ),
-              const SizedBox(height: 32),
-              _buildRequestButton(),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildDropdownField(
+                  'Genotype',
+                  selectedGenotype,
+                  genotypes,
+                  (value) => setState(() => selectedGenotype = value),
+                  Icons.biotech,
+                ),
+                const SizedBox(height: 20),
+                _buildDropdownField(
+                  'Blood Group',
+                  selectedBloodGroup,
+                  bloodGroups,
+                  (value) => setState(() => selectedBloodGroup = value),
+                  Icons.bloodtype,
+                ),
+                const SizedBox(height: 20),
+                _buildDropdownField(
+                  'Urgency Level',
+                  selectedUrgencyLevel,
+                  urgencyLevels,
+                  (value) => setState(() => selectedUrgencyLevel = value),
+                  Icons.timer,
+                ),
+                const SizedBox(height: 20),
+                _buildLocationField(),
+                const SizedBox(height: 20),
+                _buildDropdownField(
+                  'Preferred Donor',
+                  selectedPreferredDonor,
+                  preferredDonors,
+                  (value) => setState(() => selectedPreferredDonor = value),
+                  Icons.person,
+                ),
+                const SizedBox(height: 40),
+                _buildRequestButton(),
+                const SizedBox(height: 20),
+                _buildInfoSection(),
+              ],
+            ),
           ),
         ),
       ),
@@ -112,117 +116,59 @@ class _RequestBloodPageState extends State<RequestBloodPage> {
     Function(String?) onChanged,
     IconData icon,
   ) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
     return Container(
       decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF2D2D2D) : Colors.white,
+        border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
-      child: DropdownButtonFormField<String>(
-        value: value,
-        icon: const Icon(Icons.keyboard_arrow_down),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(
-            color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-          ),
-          prefixIcon: Icon(
-            icon,
-            color: const Color(0xFFCC2B2B),
-            size: 20,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          hint: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Icon(icon, color: Colors.grey),
+                const SizedBox(width: 12),
+                Text(label, style: TextStyle(color: Colors.grey.shade600)),
+              ],
             ),
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
-              color: Color(0xFFCC2B2B),
-            ),
-          ),
-        ),
-        items: items.map((String item) {
-          return DropdownMenuItem(
-            value: item,
-            child: Text(
-              item,
-              style: TextStyle(
-                color: isDarkMode ? Colors.white : Colors.black87,
+          isExpanded: true,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          borderRadius: BorderRadius.circular(12),
+          items: items.map((String item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Row(
+                children: [
+                  Icon(icon, color: const Color(0xFFCC2B2B)),
+                  const SizedBox(width: 12),
+                  Text(item),
+                ],
               ),
-            ),
-          );
-        }).toList(),
-        onChanged: onChanged,
-        dropdownColor: isDarkMode ? const Color(0xFF2D2D2D) : Colors.white,
+            );
+          }).toList(),
+          onChanged: onChanged,
+        ),
       ),
     );
   }
 
   Widget _buildLocationField() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
     return Container(
       decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF2D2D2D) : Colors.white,
+        border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: TextField(
-        controller: locationController,
+        controller: _locationController,
         decoration: InputDecoration(
-          labelText: 'Location',
-          labelStyle: TextStyle(
-            color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-          ),
-          prefixIcon: const Icon(
-            Icons.location_on,
-            color: Color(0xFFCC2B2B),
-            size: 20,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
-            ),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
-              color: Color(0xFFCC2B2B),
-            ),
-          ),
-        ),
-        style: TextStyle(
-          color: isDarkMode ? Colors.white : Colors.black87,
+          hintText: 'Location',
+          hintStyle: TextStyle(color: Colors.grey.shade600),
+          prefixIcon: const Icon(Icons.location_on, color: Colors.grey),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
       ),
     );
@@ -230,40 +176,159 @@ class _RequestBloodPageState extends State<RequestBloodPage> {
 
   Widget _buildRequestButton() {
     return ElevatedButton(
-      onPressed: () {
-        // Validate and submit request
-        if (selectedGenotype != null &&
-            selectedBloodGroup != null &&
-            selectedUrgencyLevel != null &&
-            locationController.text.isNotEmpty &&
-            selectedPreferredDonor != null) {
-          // TODO: Implement request submission
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Request submitted successfully!')),
-          );
-          Navigator.pop(context);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please fill in all fields')),
-          );
-        }
-      },
+      onPressed: _validateAndSubmit,
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFFCC2B2B),
-        foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        elevation: 4,
       ),
       child: const Text(
         'Request',
         style: TextStyle(
+          color: Colors.white,
           fontSize: 16,
           fontWeight: FontWeight.bold,
-          letterSpacing: 0.5,
         ),
+      ),
+    );
+  }
+
+  Widget _buildInfoSection() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.info_outline, color: Color(0xFFCC2B2B)),
+                SizedBox(width: 8),
+                Text(
+                  'Important Information',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildInfoItem('Verify your location accuracy'),
+            _buildInfoItem('Critical requests are prioritized'),
+            _buildInfoItem('You will be notified when a donor accepts'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, color: Color(0xFFCC2B2B), size: 16),
+          const SizedBox(width: 8),
+          Text(text, style: const TextStyle(fontSize: 14)),
+        ],
+      ),
+    );
+  }
+
+  void _validateAndSubmit() {
+    if (selectedGenotype == null ||
+        selectedBloodGroup == null ||
+        selectedUrgencyLevel == null ||
+        _locationController.text.isEmpty ||
+        selectedPreferredDonor == null) {
+      _showErrorDialog('Please fill in all fields');
+      return;
+    }
+
+    // Show loading indicator
+    _showLoadingDialog();
+
+    // Simulate API call
+    Future.delayed(const Duration(seconds: 2), () {
+      Navigator.pop(context); // Dismiss loading dialog
+      _showSuccessDialog();
+    });
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Error'),
+          ],
+        ),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLoadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: Color(0xFFCC2B2B)),
+                SizedBox(height: 16),
+                Text('Processing your request...'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 8),
+            Text('Success'),
+          ],
+        ),
+        content: const Text(
+          'Your blood request has been submitted successfully. We will notify you when a donor accepts.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context);
+            },
+            child: const Text('OK'),
+          ),
+        ],
       ),
     );
   }
