@@ -9,6 +9,7 @@ import 'pages/history_page.dart';
 import 'pages/compatibility_chart_page.dart';
 import 'pages/request_blood_page.dart';
 import 'pages/donate_page.dart';
+import 'pages/active_requests_page.dart';
 
 // Create a class to manage theme state
 class ThemeProvider extends ChangeNotifier {
@@ -502,6 +503,12 @@ class HomeContent extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const DonatePage()),
+              );
+              break;
+            case 'Active\nRequests':
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ActiveRequestsPage()),
               );
               break;
             default:
