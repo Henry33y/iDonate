@@ -330,8 +330,8 @@ class _CompatibilityChartPageState extends State<CompatibilityChartPage> with Si
 
   TableRow _buildTableHeader() {
     return TableRow(
-      decoration: BoxDecoration(
-        color: const Color(0xFFCC2B2B),
+      decoration: const BoxDecoration(
+        color: Color(0xFFCC2B2B),
       ),
       children: [
         'Blood Group',
