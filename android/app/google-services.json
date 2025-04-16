@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "655086831488",
+    "project_id": "idonate-c030e",
+    "storage_bucket": "idonate-c030e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:655086831488:android:fb0e473c117e2890a9e365",
+        "android_client_info": {
+          "package_name": "com.example.idonate"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAaangDOqoYGZ9YlZ-7IE0TO3vGFAWddZw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
