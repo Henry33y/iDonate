@@ -56,52 +56,55 @@ class _RequestBloodPageState extends State<RequestBloodPage> with SingleTickerPr
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildDropdownField(
-                  'Genotype',
-                  selectedGenotype,
-                  genotypes,
-                  (value) => setState(() => selectedGenotype = value),
-                  Icons.biotech,
-                ),
-                const SizedBox(height: 20),
-                _buildDropdownField(
-                  'Blood Group',
-                  selectedBloodGroup,
-                  bloodGroups,
-                  (value) => setState(() => selectedBloodGroup = value),
-                  Icons.bloodtype,
-                ),
-                const SizedBox(height: 20),
-                _buildDropdownField(
-                  'Urgency Level',
-                  selectedUrgencyLevel,
-                  urgencyLevels,
-                  (value) => setState(() => selectedUrgencyLevel = value),
-                  Icons.timer,
-                ),
-                const SizedBox(height: 20),
-                _buildLocationField(),
-                const SizedBox(height: 20),
-                _buildDropdownField(
-                  'Preferred Donor',
-                  selectedPreferredDonor,
-                  preferredDonors,
-                  (value) => setState(() => selectedPreferredDonor = value),
-                  Icons.person,
-                ),
-                const SizedBox(height: 40),
-                _buildRequestButton(),
-                const SizedBox(height: 20),
-                _buildInfoSection(),
-              ],
+      body: SafeArea(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildDropdownField(
+                    'Genotype',
+                    selectedGenotype,
+                    genotypes,
+                    (value) => setState(() => selectedGenotype = value),
+                    Icons.biotech,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildDropdownField(
+                    'Blood Group',
+                    selectedBloodGroup,
+                    bloodGroups,
+                    (value) => setState(() => selectedBloodGroup = value),
+                    Icons.bloodtype,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildDropdownField(
+                    'Urgency Level',
+                    selectedUrgencyLevel,
+                    urgencyLevels,
+                    (value) => setState(() => selectedUrgencyLevel = value),
+                    Icons.timer,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildLocationField(),
+                  const SizedBox(height: 20),
+                  _buildDropdownField(
+                    'Preferred Donor',
+                    selectedPreferredDonor,
+                    preferredDonors,
+                    (value) => setState(() => selectedPreferredDonor = value),
+                    Icons.person,
+                  ),
+                  const SizedBox(height: 40),
+                  _buildRequestButton(),
+                  const SizedBox(height: 20),
+                  _buildInfoSection(),
+                  const SizedBox(height: 20), // Add bottom padding
+                ],
+              ),
             ),
           ),
         ),
@@ -122,34 +125,40 @@ class _RequestBloodPageState extends State<RequestBloodPage> with SingleTickerPr
         borderRadius: BorderRadius.circular(12),
       ),
       child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          hint: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
+        child: ButtonTheme(
+          alignedDropdown: true,
+          child: DropdownButton<String>(
+            value: value,
+            hint: Row(
               children: [
                 Icon(icon, color: Colors.grey),
                 const SizedBox(width: 12),
                 Text(label, style: TextStyle(color: Colors.grey.shade600)),
               ],
             ),
+            isExpanded: true,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            borderRadius: BorderRadius.circular(12),
+            items: items.map((String item) {
+              return DropdownMenuItem<String>(
+                value: item,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, color: const Color(0xFFCC2B2B)),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Text(
+                        item,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+            onChanged: onChanged,
           ),
-          isExpanded: true,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          borderRadius: BorderRadius.circular(12),
-          items: items.map((String item) {
-            return DropdownMenuItem<String>(
-              value: item,
-              child: Row(
-                children: [
-                  Icon(icon, color: const Color(0xFFCC2B2B)),
-                  const SizedBox(width: 12),
-                  Text(item),
-                ],
-              ),
-            );
-          }).toList(),
-          onChanged: onChanged,
         ),
       ),
     );
@@ -210,11 +219,13 @@ class _RequestBloodPageState extends State<RequestBloodPage> with SingleTickerPr
               children: [
                 Icon(Icons.info_outline, color: Color(0xFFCC2B2B)),
                 SizedBox(width: 8),
-                Text(
-                  'Important Information',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                Flexible(
+                  child: Text(
+                    'Important Information',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -233,10 +244,19 @@ class _RequestBloodPageState extends State<RequestBloodPage> with SingleTickerPr
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.check_circle, color: Color(0xFFCC2B2B), size: 16),
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Icon(Icons.check_circle, color: Color(0xFFCC2B2B), size: 16),
+          ),
           const SizedBox(width: 8),
-          Text(text, style: const TextStyle(fontSize: 14)),
+          Flexible(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
         ],
       ),
     );
@@ -252,10 +272,8 @@ class _RequestBloodPageState extends State<RequestBloodPage> with SingleTickerPr
       return;
     }
 
-    // Show loading indicator
     _showLoadingDialog();
 
-    // Simulate API call
     Future.delayed(const Duration(seconds: 2), () {
       Navigator.pop(context); // Dismiss loading dialog
       _showSuccessDialog();
@@ -270,7 +288,12 @@ class _RequestBloodPageState extends State<RequestBloodPage> with SingleTickerPr
           children: [
             Icon(Icons.error_outline, color: Colors.red),
             SizedBox(width: 8),
-            Text('Error'),
+            Flexible(
+              child: Text(
+                'Error',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: Text(message),
@@ -288,18 +311,16 @@ class _RequestBloodPageState extends State<RequestBloodPage> with SingleTickerPr
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: Card(
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(color: Color(0xFFCC2B2B)),
-                SizedBox(height: 16),
-                Text('Processing your request...'),
-              ],
-            ),
+      builder: (context) => Dialog(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: Color(0xFFCC2B2B)),
+              const SizedBox(height: 16),
+              const Text('Processing your request...'),
+            ],
           ),
         ),
       ),
@@ -314,7 +335,12 @@ class _RequestBloodPageState extends State<RequestBloodPage> with SingleTickerPr
           children: [
             Icon(Icons.check_circle, color: Colors.green),
             SizedBox(width: 8),
-            Text('Success'),
+            Flexible(
+              child: Text(
+                'Success',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: const Text(

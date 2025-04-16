@@ -10,6 +10,9 @@ import 'pages/compatibility_chart_page.dart';
 import 'pages/request_blood_page.dart';
 import 'pages/donate_page.dart';
 import 'pages/active_requests_page.dart';
+import 'pages/donors_page.dart';
+import 'pages/settings_page.dart';
+import 'pages/donation_centers_page.dart';
 
 // Create a class to manage theme state
 class ThemeProvider extends ChangeNotifier {
@@ -341,8 +344,9 @@ class HomeContent extends StatelessWidget {
               }),
               _buildDrawerItem(context, Icons.local_hospital, 'Hospitals and Donation Centers', () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Hospitals page coming soon!')),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const DonationCentersPage()),
                 );
               }),
               _buildDrawerItem(context, Icons.message, 'Messages', () {
@@ -352,14 +356,16 @@ class HomeContent extends StatelessWidget {
               Divider(color: isDarkMode ? Colors.grey[800] : Colors.grey[300]),
               _buildDrawerItem(context, Icons.people, 'Donors', () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Donors page coming soon!')),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const DonorsPage()),
                 );
               }),
               _buildDrawerItem(context, Icons.settings, 'Settings', () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Settings page coming soon!')),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SettingsPage()),
                 );
               }),
             ],
@@ -509,6 +515,12 @@ class HomeContent extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const ActiveRequestsPage()),
+              );
+              break;
+            case 'Donation\nCentres':
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const DonationCentersPage()),
               );
               break;
             default:

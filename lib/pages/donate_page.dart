@@ -12,7 +12,7 @@ class DonatePage extends StatefulWidget {
 class _DonatePageState extends State<DonatePage> {
   final PageController _pageController = PageController();
   int _currentStep = 0;
-  bool _isEligible = true;
+  final bool _isEligible = true;
 
   // Form Controllers
   final _formKey = GlobalKey<FormState>();
@@ -73,15 +73,15 @@ class _DonatePageState extends State<DonatePage> {
               : [Colors.white, const Color(0xFFF5F5F5)],
           ),
         ),
-        child: Column(
-          children: [
-            _buildHeader(),
+          child: Column(
+            children: [
+              _buildHeader(),
             _buildProgressIndicator(),
             Expanded(
               child: PageView(
                 controller: _pageController,
                 physics: const NeverScrollableScrollPhysics(),
-                children: [
+                  children: [
                   SingleChildScrollView(
                     child: _buildEligibilityCheck(),
                   ),
@@ -97,10 +97,10 @@ class _DonatePageState extends State<DonatePage> {
                   SingleChildScrollView(
                     child: _buildConfirmation(),
                   ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
         ),
       ),
     );
@@ -150,7 +150,7 @@ class _DonatePageState extends State<DonatePage> {
 
   Widget _buildProgressIndicator() {
     return Container(
-      padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           Row(
@@ -183,7 +183,7 @@ class _DonatePageState extends State<DonatePage> {
   Widget _buildStepCircle(int step, String label) {
     final isActive = _currentStep >= step;
     return Column(
-      children: [
+                children: [
         Container(
           width: 30,
           height: 30,
@@ -439,12 +439,12 @@ class _DonatePageState extends State<DonatePage> {
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
+      children: [
+        const Text(
             'Donation Center Preferences',
-            style: TextStyle(
+          style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 16),
@@ -495,9 +495,9 @@ class _DonatePageState extends State<DonatePage> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-            ),
           ),
-          const SizedBox(height: 16),
+        ),
+        const SizedBox(height: 16),
           _buildNoteItem('Please bring a valid ID'),
           _buildNoteItem('Eat well before donation'),
           _buildNoteItem('Get adequate rest'),
@@ -513,26 +513,26 @@ class _DonatePageState extends State<DonatePage> {
               Expanded(
                 child: ElevatedButton(
                   onPressed: _submitDonation,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFCC2B2B),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFCC2B2B),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: const Text(
                     'Confirm Donation',
-                    style: TextStyle(
+            style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
                 ),
               ),
             ],
-          ),
-        ],
+        ),
+      ],
       ),
     );
   }
@@ -807,13 +807,13 @@ class _DonatePageState extends State<DonatePage> {
               fontSize: 16,
             ),
           ),
-          Text(
+                Text(
             value,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
         ],
       ),
     );
@@ -845,7 +845,7 @@ class _DonatePageState extends State<DonatePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
+                Text(
             _currentStep == 4 ? 'Confirm' : 'Next',
             style: const TextStyle(
               color: Colors.white,
