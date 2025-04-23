@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../providers/donations_provider.dart';
+import '../providers/auth_provider.dart';
 
 class DonatePage extends StatefulWidget {
   const DonatePage({super.key});
@@ -13,6 +16,7 @@ class _DonatePageState extends State<DonatePage> {
   final PageController _pageController = PageController();
   int _currentStep = 0;
   final bool _isEligible = true;
+  bool _isSubmitting = false;
 
   // Form Controllers
   final _formKey = GlobalKey<FormState>();
@@ -26,6 +30,8 @@ class _DonatePageState extends State<DonatePage> {
   bool? _isPregnant;
   bool? _hasTattoo;
   DateTime? _lastMealTime;
+  DateTime? _selectedDate;
+  String? _selectedLocation;
 
   // Eligibility criteria
   final double _minimumWeight = 50.0; // in kg
@@ -39,6 +45,66 @@ class _DonatePageState extends State<DonatePage> {
     _ageController.dispose();
     _lastDonationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _submitDonation() async {
+    if (_selectedDate == null || _selectedLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a date and location')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final donationsProvider =
+          Provider.of<DonationsProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      await donationsProvider.createDonation(
+        type: 'blood',
+        description:
+            'Blood donation appointment for ${_selectedBloodType ?? 'unknown'} blood type',
+        location: _selectedLocation!,
+        date: _selectedDate!,
+        status: 'scheduled',
+        bloodType: _selectedBloodType,
+        gender: _selectedGender,
+        age: int.tryParse(_ageController.text),
+        weight: double.tryParse(_weightController.text),
+        lastDonationDate: _lastDonationController.text.isNotEmpty
+            ? DateFormat('yyyy-MM-dd').parse(_lastDonationController.text)
+            : null,
+        hasRecentSurgery: _hasRecentSurgery,
+        hasChronicDisease: _hasChronicDisease,
+        isPregnant: _isPregnant,
+        hasTattoo: _hasTattoo,
+        lastMealTime: _lastMealTime,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Donation appointment created successfully!')),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error creating donation: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
   }
 
   @override
@@ -68,20 +134,20 @@ class _DonatePageState extends State<DonatePage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: isDarkMode 
-              ? [const Color(0xFF1F1F1F), const Color(0xFF121212)]
-              : [Colors.white, const Color(0xFFF5F5F5)],
+            colors: isDarkMode
+                ? [const Color(0xFF1F1F1F), const Color(0xFF121212)]
+                : [Colors.white, const Color(0xFFF5F5F5)],
           ),
         ),
-          child: Column(
-            children: [
-              _buildHeader(),
+        child: Column(
+          children: [
+            _buildHeader(),
             _buildProgressIndicator(),
             Expanded(
               child: PageView(
                 controller: _pageController,
                 physics: const NeverScrollableScrollPhysics(),
-                  children: [
+                children: [
                   SingleChildScrollView(
                     child: _buildEligibilityCheck(),
                   ),
@@ -97,10 +163,10 @@ class _DonatePageState extends State<DonatePage> {
                   SingleChildScrollView(
                     child: _buildConfirmation(),
                   ),
-                  ],
-                ),
+                ],
               ),
-            ],
+            ),
+          ],
         ),
       ),
     );
@@ -150,7 +216,7 @@ class _DonatePageState extends State<DonatePage> {
 
   Widget _buildProgressIndicator() {
     return Container(
-          padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           Row(
@@ -182,32 +248,46 @@ class _DonatePageState extends State<DonatePage> {
 
   Widget _buildStepCircle(int step, String label) {
     final isActive = _currentStep >= step;
-    return Column(
-                children: [
-        Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isActive ? const Color(0xFFCC2B2B) : Colors.grey[300],
-          ),
-          child: Center(
-            child: Icon(
-              _getStepIcon(step),
-              size: 16,
-              color: isActive ? Colors.white : Colors.grey[600],
+    return GestureDetector(
+      onTap: () {
+        if (step < _currentStep) {
+          setState(() {
+            _currentStep = step;
+            _pageController.animateToPage(
+              step,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            );
+          });
+        }
+      },
+      child: Column(
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isActive ? const Color(0xFFCC2B2B) : Colors.grey[300],
+            ),
+            child: Center(
+              child: Icon(
+                _getStepIcon(step),
+                size: 16,
+                color: isActive ? Colors.white : Colors.grey[600],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: isActive ? const Color(0xFFCC2B2B) : Colors.grey[600],
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: isActive ? const Color(0xFFCC2B2B) : Colors.grey[600],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -309,7 +389,8 @@ class _DonatePageState extends State<DonatePage> {
                   lastDate: DateTime.now(),
                 );
                 if (date != null) {
-                  _lastDonationController.text = DateFormat('yyyy-MM-dd').format(date);
+                  _lastDonationController.text =
+                      DateFormat('yyyy-MM-dd').format(date);
                 }
               },
             ),
@@ -439,12 +520,42 @@ class _DonatePageState extends State<DonatePage> {
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-            'Donation Center Preferences',
-          style: TextStyle(
+        children: [
+          const Text(
+            'Select Date',
+            style: TextStyle(
               fontSize: 18,
-            fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final date = await showDatePicker(
+                context: context,
+                initialDate: DateTime.now(),
+                firstDate: DateTime.now(),
+                lastDate: DateTime.now().add(const Duration(days: 30)),
+              );
+              if (date != null) {
+                setState(() {
+                  _selectedDate = date;
+                });
+              }
+            },
+            icon: const Icon(Icons.calendar_today),
+            label: Text(
+              _selectedDate != null
+                  ? DateFormat('MMMM d, yyyy').format(_selectedDate!)
+                  : 'Select Date',
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Donation Center Preferences',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 16),
@@ -483,56 +594,44 @@ class _DonatePageState extends State<DonatePage> {
   }
 
   Widget _buildConfirmation() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildConfirmationCard(),
-          const SizedBox(height: 24),
           const Text(
-            'Important Notes:',
+            'Confirm Your Donation',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-          _buildNoteItem('Please bring a valid ID'),
-          _buildNoteItem('Eat well before donation'),
-          _buildNoteItem('Get adequate rest'),
-          _buildNoteItem('Wear comfortable clothing'),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              TextButton(
-                onPressed: () => _previousStep(),
-                child: const Text('Back'),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _submitDonation,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFCC2B2B),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              color: Color(0xFFCC2B2B),
             ),
           ),
-          child: const Text(
-                    'Confirm Donation',
-            style: TextStyle(
-                      color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          const SizedBox(height: 20),
+          _buildConfirmationCard(),
+          const SizedBox(height: 20),
+          if (_isSubmitting)
+            const Center(child: CircularProgressIndicator())
+          else
+            ElevatedButton(
+              onPressed: _submitDonation,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFCC2B2B),
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-            ],
-        ),
-      ],
+              child: const Text(
+                'Confirm Donation',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -714,9 +813,11 @@ class _DonatePageState extends State<DonatePage> {
       ),
       child: RadioListTile<String>(
         value: name,
-        groupValue: 'City General Hospital', // Replace with actual selected value
+        groupValue: _selectedLocation,
         onChanged: (value) {
-          // Handle selection
+          setState(() {
+            _selectedLocation = value;
+          });
         },
         title: Text(
           name,
@@ -757,76 +858,55 @@ class _DonatePageState extends State<DonatePage> {
 
   Widget _buildConfirmationCard() {
     return Card(
-      elevation: 2,
+      elevation: 4,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Donation Details',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildDetailRow('Blood Type', _selectedBloodType ?? 'Not specified'),
-            _buildDetailRow('Age', _ageController.text),
-            _buildDetailRow('Weight', '${_weightController.text} kg'),
-            _buildDetailRow('Gender', _selectedGender ?? 'Not specified'),
-            _buildDetailRow(
-              'Location',
-              'City General Hospital, 123 Main Street',
-            ),
-            _buildDetailRow(
-              'Last Meal',
-              _lastMealTime != null
-                  ? DateFormat('hh:mm a').format(_lastMealTime!)
-                  : 'Not specified',
-            ),
+            _buildConfirmationItem(
+                'Blood Type', _selectedBloodType ?? 'Not specified'),
+            const Divider(),
+            _buildConfirmationItem(
+                'Date',
+                _selectedDate != null
+                    ? DateFormat('MMMM d, yyyy').format(_selectedDate!)
+                    : 'Not specified'),
+            const Divider(),
+            _buildConfirmationItem(
+                'Location', _selectedLocation ?? 'Not specified'),
+            const Divider(),
+            _buildConfirmationItem('Status', 'Scheduled'),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildConfirmationItem(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
-            style: TextStyle(
-              color: Colors.grey[600],
+            style: const TextStyle(
               fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
             ),
           ),
-                Text(
+          Text(
             value,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNoteItem(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          const Icon(Icons.info_outline, color: Color(0xFFCC2B2B), size: 16),
-          const SizedBox(width: 8),
-          Text(text),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
@@ -845,7 +925,7 @@ class _DonatePageState extends State<DonatePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-                Text(
+          Text(
             _currentStep == 4 ? 'Confirm' : 'Next',
             style: const TextStyle(
               color: Colors.white,
@@ -889,56 +969,4 @@ class _DonatePageState extends State<DonatePage> {
       });
     }
   }
-
-  void _submitDonation() {
-    // Show loading indicator
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(
-          color: Color(0xFFCC2B2B),
-        ),
-      ),
-    );
-
-    // Simulate API call
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pop(context); // Dismiss loading indicator
-      _showSuccessDialog();
-    });
-  }
-
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.green),
-            SizedBox(width: 8),
-            Text('Thank You!'),
-          ],
-        ),
-        content: const Text(
-          'Your blood donation request has been submitted successfully. We will send you a confirmation email with further instructions.',
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context); // Dismiss dialog
-              Navigator.pop(context); // Return to previous screen
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFCC2B2B),
-            ),
-            child: const Text(
-              'OK',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-} 
+}
