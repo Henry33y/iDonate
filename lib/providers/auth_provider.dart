@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'dart:html' as html;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../services/firebase_service.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -29,8 +29,14 @@ class AuthProvider with ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      if (html.window.navigator.userAgent.contains('Firefox')) {
-        // For Firefox, use the standard sign-in flow
+      if (kIsWeb) {
+        // Web platform
+        final provider = GoogleAuthProvider();
+        provider.addScope('https://www.googleapis.com/auth/userinfo.email');
+        provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
+        await _firebaseService.signInWithPopup(provider);
+      } else {
+        // Mobile platform
         final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
         if (googleUser == null) return;
 
@@ -42,13 +48,6 @@ class AuthProvider with ChangeNotifier {
         );
 
         await _firebaseService.signInWithCredential(credential);
-      } else {
-        // For other browsers, use the recommended web approach
-        final provider = GoogleAuthProvider();
-        provider.addScope('https://www.googleapis.com/auth/userinfo.email');
-        provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
-
-        await _firebaseService.signInWithPopup(provider);
       }
 
       // Create user document if it doesn't exist
