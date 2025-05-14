@@ -3,16 +3,22 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 
 class AppointmentPage extends StatefulWidget {
-  const AppointmentPage({super.key});
+  final String? appointmentId;
+
+  const AppointmentPage({
+    super.key,
+    this.appointmentId,
+  });
 
   @override
   State<AppointmentPage> createState() => _AppointmentPageState();
 }
 
-class _AppointmentPageState extends State<AppointmentPage> with SingleTickerProviderStateMixin {
+class _AppointmentPageState extends State<AppointmentPage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-  
+
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
@@ -22,9 +28,18 @@ class _AppointmentPageState extends State<AppointmentPage> with SingleTickerProv
 
   // Simulated available time slots
   final List<String> _timeSlots = [
-    '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
-    '11:00 AM', '11:30 AM', '02:00 PM', '02:30 PM',
-    '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM',
+    '09:00 AM',
+    '09:30 AM',
+    '10:00 AM',
+    '10:30 AM',
+    '11:00 AM',
+    '11:30 AM',
+    '02:00 PM',
+    '02:30 PM',
+    '03:00 PM',
+    '03:30 PM',
+    '04:00 PM',
+    '04:30 PM',
   ];
 
   final List<String> _donationTypes = [
@@ -62,9 +77,9 @@ class _AppointmentPageState extends State<AppointmentPage> with SingleTickerProv
   }
 
   bool _isDateUnavailable(DateTime day) {
-    return _unavailableDates.contains(day) || 
-           day.weekday == DateTime.sunday || 
-           day.isBefore(DateTime.now().subtract(const Duration(days: 1)));
+    return _unavailableDates.contains(day) ||
+        day.weekday == DateTime.sunday ||
+        day.isBefore(DateTime.now().subtract(const Duration(days: 1)));
   }
 
   @override
@@ -123,7 +138,8 @@ class _AppointmentPageState extends State<AppointmentPage> with SingleTickerProv
               _buildStepLine(true),
               _buildStepCircle(2, _selectedDay != null, 'Time'),
               _buildStepLine(_selectedDay != null),
-              _buildStepCircle(3, _selectedDay != null && _selectedTimeSlot != null, 'Confirm'),
+              _buildStepCircle(3,
+                  _selectedDay != null && _selectedTimeSlot != null, 'Confirm'),
             ],
           ),
         ],
@@ -265,7 +281,9 @@ class _AppointmentPageState extends State<AppointmentPage> with SingleTickerProv
                     color: isSelected ? const Color(0xFFCC2B2B) : Colors.white,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: isSelected ? const Color(0xFFCC2B2B) : Colors.grey.shade300,
+                      color: isSelected
+                          ? const Color(0xFFCC2B2B)
+                          : Colors.grey.shade300,
                     ),
                   ),
                   child: Center(
@@ -273,7 +291,8 @@ class _AppointmentPageState extends State<AppointmentPage> with SingleTickerProv
                       timeSlot,
                       style: TextStyle(
                         color: isSelected ? Colors.white : Colors.black87,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
                   ),
@@ -376,9 +395,9 @@ class _AppointmentPageState extends State<AppointmentPage> with SingleTickerProv
   }
 
   Widget _buildScheduleButton() {
-    final bool canSchedule = _selectedDay != null && 
-                           _selectedTimeSlot != null && 
-                           _selectedDonationType != null;
+    final bool canSchedule = _selectedDay != null &&
+        _selectedTimeSlot != null &&
+        _selectedDonationType != null;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -539,4 +558,4 @@ class _AppointmentPageState extends State<AppointmentPage> with SingleTickerProv
       ),
     );
   }
-} 
+}

@@ -8,7 +8,7 @@
   <meta name="description" content="A new Flutter project.">
 
   <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="idonate">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
@@ -19,19 +19,24 @@
   <title>idonate</title>
   <link rel="manifest" href="manifest.json">
 
-  <!-- Add Google API client library -->
-  <script src="https://apis.google.com/js/api.js"></script>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-
   <script>
     // The value below is injected by flutter build, do not touch.
     const serviceWorkerVersion = null;
   </script>
-
   <!-- This script adds the flutter initialization JS code -->
   <script src="flutter.js" defer></script>
 </head>
 <body>
+  <!-- Firebase App (the core Firebase SDK) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"></script>
+  <!-- Firebase Auth -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"></script>
+  <!-- Firebase Firestore -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"></script>
+  <!-- Firebase Messaging -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js"></script>
+  
+  <script src="firebase-config.js"></script>
   <script>
     window.addEventListener('load', function(ev) {
       // Download main.dart.js

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 enum UrgencyLevel { low, medium, high, critical }
 
@@ -13,6 +14,8 @@ class Request {
   final bool isFulfilled;
   final String? fulfilledBy;
   final DateTime? fulfilledAt;
+  final String bloodType;
+  final LatLng location;
 
   Request({
     required this.id,
@@ -25,6 +28,8 @@ class Request {
     this.isFulfilled = false,
     this.fulfilledBy,
     this.fulfilledAt,
+    required this.bloodType,
+    required this.location,
   });
 
   Map<String, dynamic> toMap() {
@@ -40,6 +45,11 @@ class Request {
       'fulfilledBy': fulfilledBy,
       'fulfilledAt':
           fulfilledAt != null ? Timestamp.fromDate(fulfilledAt!) : null,
+      'bloodType': bloodType,
+      'location': {
+        'latitude': location.latitude,
+        'longitude': location.longitude,
+      },
     };
   }
 
@@ -60,6 +70,11 @@ class Request {
       fulfilledAt: map['fulfilledAt'] != null
           ? (map['fulfilledAt'] as Timestamp).toDate()
           : null,
+      bloodType: map['bloodType'] ?? '',
+      location: LatLng(
+        map['location']?['latitude'] ?? 0.0,
+        map['location']?['longitude'] ?? 0.0,
+      ),
     );
   }
 }

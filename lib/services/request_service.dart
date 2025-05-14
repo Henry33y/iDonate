@@ -1,10 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../models/request.dart';
+import 'notification_service.dart';
 
 class RequestService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  final NotificationService _notificationService = NotificationService();
 
   Future<void> createRequest(Request request) async {
     try {
@@ -18,42 +21,17 @@ class RequestService {
           .then((_) => print('Request created successfully'))
           .catchError((error) => print('Error creating request: $error'));
 
-      if (request.urgency == UrgencyLevel.critical) {
-        await _sendCriticalRequestNotification(request);
-      }
+      // Send notifications to nearby users and institutions
+      await _notificationService.sendBloodRequestNotification(
+        requestId: request.id,
+        bloodType: request.bloodType,
+        requestLat: request.location.latitude,
+        requestLon: request.location.longitude,
+        radiusInMeters: 50000, // 50km radius
+      );
     } catch (e) {
       print('Exception in createRequest: $e');
       throw Exception('Failed to create request: $e');
-    }
-  }
-
-  Future<void> _sendCriticalRequestNotification(Request request) async {
-    try {
-      // Get all user FCM tokens
-      final usersSnapshot = await _firestore.collection('users').get();
-      final tokens = usersSnapshot.docs
-          .map((doc) => doc.data()['fcmToken'] as String?)
-          .where((token) => token != null)
-          .toList();
-
-      // Send notification to all users
-      for (final token in tokens) {
-        if (token != null) {
-          await _messaging.sendToTopic(
-            'critical_requests',
-            notification: RemoteNotification(
-              title: 'Critical Request Alert!',
-              body: '${request.title} - Urgent help needed!',
-            ),
-            data: {
-              'requestId': request.id,
-              'type': 'critical_request',
-            },
-          );
-        }
-      }
-    } catch (e) {
-      print('Error sending critical request notification: $e');
     }
   }
 

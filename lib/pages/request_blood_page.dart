@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import '../providers/institutions_provider.dart';
 
 class RequestBloodPage extends StatefulWidget {
   const RequestBloodPage({super.key});
@@ -7,20 +12,33 @@ class RequestBloodPage extends StatefulWidget {
   State<RequestBloodPage> createState() => _RequestBloodPageState();
 }
 
-class _RequestBloodPageState extends State<RequestBloodPage> with SingleTickerProviderStateMixin {
+class _RequestBloodPageState extends State<RequestBloodPage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-  
+
   String? selectedGenotype;
   String? selectedBloodGroup;
   String? selectedUrgencyLevel;
-  String? selectedPreferredDonor;
-  final TextEditingController _locationController = TextEditingController();
+  Map<String, dynamic>? selectedDonationCentre;
+  int unitsNeeded = 1;
+  bool _useGPS = false;
+  Position? _currentPosition;
+  String? _currentAddress;
+  bool _isSubmitting = false;
 
   final List<String> genotypes = ['AA', 'AS', 'SS', 'AC'];
-  final List<String> bloodGroups = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+  final List<String> bloodGroups = [
+    'A+',
+    'A-',
+    'B+',
+    'B-',
+    'O+',
+    'O-',
+    'AB+',
+    'AB-'
+  ];
   final List<String> urgencyLevels = ['Critical', 'Urgent', 'Standard'];
-  final List<String> preferredDonors = ['Any', 'Family/Friend', 'Voluntary'];
 
   @override
   void initState() {
@@ -38,8 +56,41 @@ class _RequestBloodPageState extends State<RequestBloodPage> with SingleTickerPr
   @override
   void dispose() {
     _animationController.dispose();
-    _locationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _showErrorDialog('Location services are disabled. Please enable GPS.');
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          _showErrorDialog('Location permissions are denied');
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        _showErrorDialog('Location permissions are permanently denied');
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+
+      setState(() {
+        _currentPosition = position;
+        _currentAddress = '${position.latitude}, ${position.longitude}';
+      });
+    } catch (e) {
+      _showErrorDialog('Error getting location: $e');
+    }
   }
 
   @override
@@ -89,20 +140,16 @@ class _RequestBloodPageState extends State<RequestBloodPage> with SingleTickerPr
                     Icons.timer,
                   ),
                   const SizedBox(height: 20),
-                  _buildLocationField(),
+                  _buildUnitsNeededField(),
                   const SizedBox(height: 20),
-                  _buildDropdownField(
-                    'Preferred Donor',
-                    selectedPreferredDonor,
-                    preferredDonors,
-                    (value) => setState(() => selectedPreferredDonor = value),
-                    Icons.person,
-                  ),
+                  _buildDonationCentreField(),
+                  const SizedBox(height: 20),
+                  _buildLocationField(),
                   const SizedBox(height: 40),
                   _buildRequestButton(),
                   const SizedBox(height: 20),
                   _buildInfoSection(),
-                  const SizedBox(height: 20), // Add bottom padding
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -164,21 +211,157 @@ class _RequestBloodPageState extends State<RequestBloodPage> with SingleTickerPr
     );
   }
 
+  Widget _buildUnitsNeededField() {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Icon(Icons.bloodtype, color: Colors.grey),
+          ),
+          const Text(
+            'Units Needed:',
+            style: TextStyle(color: Colors.grey),
+          ),
+          Expanded(
+            child: Slider(
+              value: unitsNeeded.toDouble(),
+              min: 1,
+              max: 10,
+              divisions: 9,
+              label: unitsNeeded.toString(),
+              onChanged: (value) {
+                setState(() {
+                  unitsNeeded = value.round();
+                });
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Text(
+              unitsNeeded.toString(),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDonationCentreField() {
+    return Consumer<InstitutionsProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final institutions = provider.institutions;
+        if (institutions.isEmpty) {
+          return const Center(
+            child: Text('No donation centres available'),
+          );
+        }
+
+        return Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: ButtonTheme(
+              alignedDropdown: true,
+              child: DropdownButton<Map<String, dynamic>>(
+                value: selectedDonationCentre,
+                hint: Row(
+                  children: [
+                    const Icon(Icons.local_hospital, color: Colors.grey),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Select Donation Centre',
+                      style: TextStyle(color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+                isExpanded: true,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                borderRadius: BorderRadius.circular(12),
+                items: institutions.map((institution) {
+                  return DropdownMenuItem<Map<String, dynamic>>(
+                    value: institution,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.local_hospital,
+                            color: Color(0xFFCC2B2B)),
+                        const SizedBox(width: 12),
+                        Flexible(
+                          child: Text(
+                            institution['name'] ?? 'Unknown Centre',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedDonationCentre = value;
+                  });
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildLocationField() {
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: TextField(
-        controller: _locationController,
-        decoration: InputDecoration(
-          hintText: 'Location',
-          hintStyle: TextStyle(color: Colors.grey.shade600),
-          prefixIcon: const Icon(Icons.location_on, color: Colors.grey),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          const Icon(Icons.location_on, color: Colors.grey),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _currentAddress ?? 'Enable GPS to get your location',
+              style: TextStyle(
+                color: _currentAddress != null
+                    ? Colors.black87
+                    : Colors.grey.shade600,
+              ),
+            ),
+          ),
+          Switch(
+            value: _useGPS,
+            onChanged: (value) {
+              setState(() {
+                _useGPS = value;
+                if (value) {
+                  _getCurrentLocation();
+                } else {
+                  _currentPosition = null;
+                  _currentAddress = null;
+                }
+              });
+            },
+            activeColor: const Color(0xFFCC2B2B),
+          ),
+        ],
       ),
     );
   }
@@ -262,22 +445,80 @@ class _RequestBloodPageState extends State<RequestBloodPage> with SingleTickerPr
     );
   }
 
-  void _validateAndSubmit() {
+  Future<void> _submitRequest() async {
     if (selectedGenotype == null ||
         selectedBloodGroup == null ||
         selectedUrgencyLevel == null ||
-        _locationController.text.isEmpty ||
-        selectedPreferredDonor == null) {
-      _showErrorDialog('Please fill in all fields');
+        selectedDonationCentre == null ||
+        (_useGPS && _currentPosition == null)) {
+      _showErrorDialog(
+          'Please fill in all fields and ensure location is enabled if using GPS');
       return;
     }
 
-    _showLoadingDialog();
-
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pop(context); // Dismiss loading dialog
-      _showSuccessDialog();
+    setState(() {
+      _isSubmitting = true;
     });
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Create request data
+      final requestData = {
+        'userId': user.uid,
+        'userEmail': user.email,
+        'userName': user.displayName ?? 'Anonymous',
+        'bloodType': selectedBloodGroup,
+        'genotype': selectedGenotype,
+        'urgency': selectedUrgencyLevel?.toLowerCase(),
+        'status': 'open',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'needLocation': _useGPS
+            ? {
+                'lat': _currentPosition?.latitude,
+                'lng': _currentPosition?.longitude,
+                'label': _currentAddress,
+              }
+            : null,
+        'donationCentre': selectedDonationCentre,
+        'unitsNeeded': unitsNeeded,
+        'preferredDonorSettings': {
+          'minAge': 18,
+          'maxAge': 65,
+          'minWeight': 50,
+          'minHemoglobin': 12.5,
+        },
+      };
+
+      // Add to Firestore
+      await FirebaseFirestore.instance.collection('requests').add(requestData);
+
+      if (mounted) {
+        Navigator.pop(context); // Dismiss loading dialog
+        _showSuccessDialog();
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorDialog('Error submitting request: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  void _validateAndSubmit() {
+    if (_isSubmitting) return;
+
+    _showLoadingDialog();
+    _submitRequest();
   }
 
   void _showErrorDialog(String message) {
@@ -319,7 +560,7 @@ class _RequestBloodPageState extends State<RequestBloodPage> with SingleTickerPr
             children: [
               const CircularProgressIndicator(color: Color(0xFFCC2B2B)),
               const SizedBox(height: 16),
-              const Text('Processing your request...'),
+              const Text('Submitting your request...'),
             ],
           ),
         ),
@@ -358,4 +599,4 @@ class _RequestBloodPageState extends State<RequestBloodPage> with SingleTickerPr
       ),
     );
   }
-} 
+}

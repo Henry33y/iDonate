@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/donations_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/institutions_provider.dart';
 
 class DonatePage extends StatefulWidget {
   const DonatePage({super.key});
@@ -32,6 +33,7 @@ class _DonatePageState extends State<DonatePage> {
   DateTime? _lastMealTime;
   DateTime? _selectedDate;
   String? _selectedLocation;
+  String? _selectedInstitutionId;
 
   // Eligibility criteria
   final double _minimumWeight = 50.0; // in kg
@@ -65,24 +67,14 @@ class _DonatePageState extends State<DonatePage> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
       await donationsProvider.createDonation(
-        type: 'blood',
-        description:
-            'Blood donation appointment for ${_selectedBloodType ?? 'unknown'} blood type',
-        location: _selectedLocation!,
+        donorId: authProvider.user!.uid,
+        recipientId:
+            'hospital', // This should be replaced with actual hospital ID
+        bloodType: _selectedBloodType ?? 'unknown',
         date: _selectedDate!,
-        status: 'scheduled',
-        bloodType: _selectedBloodType,
-        gender: _selectedGender,
-        age: int.tryParse(_ageController.text),
-        weight: double.tryParse(_weightController.text),
-        lastDonationDate: _lastDonationController.text.isNotEmpty
-            ? DateFormat('yyyy-MM-dd').parse(_lastDonationController.text)
-            : null,
-        hasRecentSurgery: _hasRecentSurgery,
-        hasChronicDisease: _hasChronicDisease,
-        isPregnant: _isPregnant,
-        hasTattoo: _hasTattoo,
-        lastMealTime: _lastMealTime,
+        location: _selectedLocation!,
+        notes:
+            'Blood donation appointment for ${_selectedBloodType ?? 'unknown'} blood type',
       );
 
       if (mounted) {
@@ -559,23 +551,39 @@ class _DonatePageState extends State<DonatePage> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildPreferenceCard(
-            'City General Hospital',
-            '123 Main Street',
-            '2.5 km away',
-            4.5,
-          ),
-          _buildPreferenceCard(
-            'Red Cross Blood Bank',
-            '456 Park Avenue',
-            '3.8 km away',
-            4.8,
-          ),
-          _buildPreferenceCard(
-            'Community Health Center',
-            '789 Oak Road',
-            '5.2 km away',
-            4.2,
+          Consumer<InstitutionsProvider>(
+            builder: (context, institutionsProvider, child) {
+              if (institutionsProvider.isLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final institutions = institutionsProvider.institutions;
+              if (institutions.isEmpty) {
+                return const Center(
+                  child: Text('No donation centers available'),
+                );
+              }
+
+              return Column(
+                children: institutions.map((institution) {
+                  final isSelected =
+                      institution['id'] == _selectedInstitutionId;
+                  return _buildPreferenceCard(
+                    institution['name'],
+                    institution['address'],
+                    institution['status'],
+                    institution['rating'],
+                    isSelected: isSelected,
+                    onTap: () {
+                      setState(() {
+                        _selectedInstitutionId = institution['id'];
+                        _selectedLocation = institution['name'];
+                      });
+                    },
+                  );
+                }).toList(),
+              );
+            },
           ),
           const SizedBox(height: 24),
           Row(
@@ -589,6 +597,102 @@ class _DonatePageState extends State<DonatePage> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPreferenceCard(
+    String name,
+    String address,
+    String status,
+    double rating, {
+    bool isSelected = false,
+    VoidCallback? onTap,
+  }) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+        side: BorderSide(
+          color: isSelected ? const Color(0xFFCC2B2B) : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      elevation: 2,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(15),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          address,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: status == 'Open'
+                          ? Colors.green.withOpacity(0.1)
+                          : Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      status,
+                      style: TextStyle(
+                        color: status == 'Open' ? Colors.green : Colors.red,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(
+                    Icons.star,
+                    size: 16,
+                    color: Colors.amber[700],
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    rating.toStringAsFixed(1),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -797,62 +901,6 @@ class _DonatePageState extends State<DonatePage> {
         ),
         const Divider(),
       ],
-    );
-  }
-
-  Widget _buildPreferenceCard(
-    String name,
-    String address,
-    String distance,
-    double rating,
-  ) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: RadioListTile<String>(
-        value: name,
-        groupValue: _selectedLocation,
-        onChanged: (value) {
-          setState(() {
-            _selectedLocation = value;
-          });
-        },
-        title: Text(
-          name,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(address),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Text(
-                  distance,
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-                const SizedBox(width: 16),
-                Row(
-                  children: [
-                    const Icon(Icons.star, size: 16, color: Colors.amber),
-                    const SizedBox(width: 4),
-                    Text(
-                      rating.toString(),
-                      style: TextStyle(color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 

@@ -1,60 +1,79 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import '../services/firebase_service.dart';
+import '../services/auth_service.dart';
 
 class AuthProvider with ChangeNotifier {
-  final FirebaseService _firebaseService = FirebaseService();
+  final AuthService _authService = AuthService();
   User? _user;
   bool _isLoading = false;
 
   User? get user => _user;
+  User? get currentUser => _user;
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _user != null;
 
   AuthProvider() {
-    _init();
-  }
-
-  void _init() {
-    _firebaseService.authStateChanges.listen((user) {
+    _authService.authStateChanges.listen((User? user) {
       _user = user;
       notifyListeners();
     });
   }
 
-  Future<void> signInWithGoogle() async {
+  Future<void> signUp({
+    required String email,
+    required String password,
+    required String name,
+    required String phone,
+    required DateTime dateOfBirth,
+    required String gender,
+    required String bloodType,
+    required String role,
+    required String location,
+    required String emergencyContactName,
+    required String emergencyContactPhone,
+    String? healthNotes,
+    String? religion,
+    required bool isAnonymous,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
     try {
-      _isLoading = true;
+      await _authService.signUp(
+        email: email,
+        password: password,
+        name: name,
+        phone: phone,
+        dateOfBirth: dateOfBirth,
+        gender: gender,
+        bloodType: bloodType,
+        role: role,
+        location: location,
+        emergencyContactName: emergencyContactName,
+        emergencyContactPhone: emergencyContactPhone,
+        healthNotes: healthNotes,
+        religion: religion,
+        isAnonymous: isAnonymous,
+      );
+    } finally {
+      _isLoading = false;
       notifyListeners();
+    }
+  }
 
-      if (kIsWeb) {
-        // Web platform
-        final provider = GoogleAuthProvider();
-        provider.addScope('https://www.googleapis.com/auth/userinfo.email');
-        provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
-        await _firebaseService.signInWithPopup(provider);
-      } else {
-        // Mobile platform
-        final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-        if (googleUser == null) return;
+  Future<void> signIn({
+    required String email,
+    required String password,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
 
-        final GoogleSignInAuthentication googleAuth =
-            await googleUser.authentication;
-        final credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
-        );
-
-        await _firebaseService.signInWithCredential(credential);
-      }
-
-      // Create user document if it doesn't exist
-      await _firebaseService.createUserDocument();
-    } catch (e) {
-      debugPrint('Error signing in with Google: $e');
-      rethrow;
+    try {
+      await _authService.signIn(
+        email: email,
+        password: password,
+      );
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -62,26 +81,61 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    _isLoading = true;
+    notifyListeners();
+
     try {
-      _isLoading = true;
-      notifyListeners();
-      await _firebaseService.signOut();
-      _user = null;
-    } catch (e) {
-      debugPrint('Error signing out: $e');
-      rethrow;
+      await _authService.signOut();
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> createUserDocument() async {
-    if (_user != null) {
-      final exists = await _firebaseService.userDocumentExists(_user!.uid);
-      if (!exists) {
-        await _firebaseService.createUserDocument(_user);
-      }
+  Future<void> resetPassword(String email) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _authService.resetPassword(email);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
+  }
+
+  Future<void> updateProfile({
+    String? name,
+    String? phone,
+    String? location,
+    String? emergencyContactName,
+    String? emergencyContactPhone,
+    String? healthNotes,
+    String? religion,
+    bool? isAnonymous,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _authService.updateProfile(
+        name: name,
+        phone: phone,
+        location: location,
+        emergencyContactName: emergencyContactName,
+        emergencyContactPhone: emergencyContactPhone,
+        healthNotes: healthNotes,
+        religion: religion,
+        isAnonymous: isAnonymous,
+      );
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteAccount() async {
+    await _authService.deleteAccount();
+    notifyListeners();
   }
 }

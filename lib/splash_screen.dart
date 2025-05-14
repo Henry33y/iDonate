@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 
-// Import the home screen
-import 'login.dart'; // Import the first page
-
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -11,17 +8,17 @@ class SplashScreen extends StatefulWidget {
   _SplashScreenState createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<double> _pulseAnimation;
-  bool _disposed = false;
 
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize animation controller with longer duration
     _controller = AnimationController(
       duration: const Duration(milliseconds: 3000),
@@ -63,29 +60,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     // Start the animation
     _controller.forward();
-
-    // Navigate after a longer delay
-    Future.delayed(const Duration(milliseconds: 4000), () {
-      if (!_disposed) {
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return FadeTransition(
-                opacity: animation,
-                child: child,
-              );
-            },
-            transitionDuration: const Duration(milliseconds: 800),
-          ),
-        );
-      }
-    });
   }
 
   @override
   void dispose() {
-    _disposed = true;
     _controller.dispose();
     super.dispose();
   }

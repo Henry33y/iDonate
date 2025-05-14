@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
 
 class DonationCentersPage extends StatefulWidget {
   const DonationCentersPage({super.key});
@@ -10,10 +12,15 @@ class DonationCentersPage extends StatefulWidget {
 }
 
 class _DonationCentersPageState extends State<DonationCentersPage> {
-  late GoogleMapController _mapController;
+  GoogleMapController? _mapController;
   bool _isListView = false;
   String _selectedFilter = 'All Centers';
   final TextEditingController _searchController = TextEditingController();
+  Position? _currentPosition;
+  List<Map<String, dynamic>> _filteredCenters = [];
+  bool _isLoading = true;
+  Set<Marker> _markers = {};
+  LatLng _center = const LatLng(37.7749, -122.4194); // Default center
 
   final List<String> _filters = [
     'All Centers',
@@ -23,69 +30,106 @@ class _DonationCentersPageState extends State<DonationCentersPage> {
     'Blood Banks'
   ];
 
-  final List<Map<String, dynamic>> _centers = [
-    {
-      'name': 'City General Hospital',
-      'type': 'Hospital',
-      'address': '123 Medical Center Drive',
-      'distance': '2.3',
-      'rating': 4.5,
-      'reviews': 128,
-      'status': 'Open',
-      'hours': '24/7',
-      'phone': '+1 234-567-8900',
-      'website': 'www.citygeneralhospital.com',
-      'position': const LatLng(37.7749, -122.4194),
-      'services': ['Blood Donation', 'Blood Testing', 'Plasma Donation'],
-      'bloodTypes': ['A+', 'B+', 'O+', 'AB+'],
-      'waitTime': '15 mins',
-      'image': 'assets/images/hospital1.jpg',
-    },
-    {
-      'name': 'Red Cross Blood Center',
-      'type': 'Blood Bank',
-      'address': '456 Donation Street',
-      'distance': '3.7',
-      'rating': 4.8,
-      'reviews': 256,
-      'status': 'Open',
-      'hours': '9:00 AM - 6:00 PM',
-      'phone': '+1 234-567-8901',
-      'website': 'www.redcrossblood.org',
-      'position': const LatLng(37.7739, -122.4312),
-      'services': ['Blood Donation', 'Plasma Donation', 'Platelet Donation'],
-      'bloodTypes': ['All Types'],
-      'waitTime': '10 mins',
-      'image': 'assets/images/redcross.jpg',
-    },
-    {
-      'name': 'Community Blood Bank',
-      'type': 'Blood Bank',
-      'address': '789 Community Ave',
-      'distance': '4.2',
-      'rating': 4.3,
-      'reviews': 89,
-      'status': 'Open',
-      'hours': '8:00 AM - 8:00 PM',
-      'phone': '+1 234-567-8902',
-      'website': 'www.communitybloodbank.org',
-      'position': const LatLng(37.7719, -122.4139),
-      'services': ['Blood Donation', 'Blood Testing'],
-      'bloodTypes': ['A+', 'O+', 'O-'],
-      'waitTime': '20 mins',
-      'image': 'assets/images/bloodbank.jpg',
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _getCurrentLocation();
+    _loadCenters();
+  }
 
-  Set<Marker> _markers = {};
-  final LatLng _center = const LatLng(37.7749, -122.4194);
+  Future<void> _getCurrentLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return;
+      }
 
-  void _onMapCreated(GoogleMapController controller) {
-    _mapController = controller;
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          return;
+        }
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+
+      setState(() {
+        _currentPosition = position;
+        _center = LatLng(position.latitude, position.longitude);
+      });
+
+      // Update map camera if controller is available
+      if (_mapController != null) {
+        _mapController!.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: _center,
+              zoom: 13,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error getting location: $e');
+    }
+  }
+
+  Future<void> _loadCenters() async {
+    try {
+      final QuerySnapshot snapshot =
+          await FirebaseFirestore.instance.collection('institutions').get();
+
+      final List<Map<String, dynamic>> centers = snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return {
+          'id': doc.id,
+          'name': data['name'] ?? 'Unknown',
+          'type': data['type'] ?? 'Unknown',
+          'address': data['address'] ?? 'No address',
+          'rating': (data['rating'] ?? 0.0).toDouble(),
+          'reviews': data['reviews'] ?? 0,
+          'status': data['isOpen'] ? 'Open' : 'Closed',
+          'hours': data['hours'] ?? 'Not specified',
+          'phone': data['phone'] ?? 'Not available',
+          'website': data['website'] ?? 'Not available',
+          'position': LatLng(
+            data['location']?['latitude'] ?? 0.0,
+            data['location']?['longitude'] ?? 0.0,
+          ),
+          'services': List<String>.from(data['services'] ?? []),
+          'bloodTypes': List<String>.from(data['bloodTypes'] ?? []),
+          'waitTime': data['waitTime'] ?? 'Not available',
+          'distance': _calculateDistance(
+            _currentPosition?.latitude ?? 0.0,
+            _currentPosition?.longitude ?? 0.0,
+            data['location']?['latitude'] ?? 0.0,
+            data['location']?['longitude'] ?? 0.0,
+          ).toStringAsFixed(1),
+        };
+      }).toList();
+
+      setState(() {
+        _filteredCenters = centers;
+        _updateMarkers();
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading centers: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _updateMarkers() {
+    if (!mounted) return;
+
     setState(() {
-      _markers = _centers.map((center) {
+      _markers = _filteredCenters.map((center) {
         return Marker(
-          markerId: MarkerId(center['name']),
+          markerId: MarkerId(center['id']),
           position: center['position'],
           infoWindow: InfoWindow(
             title: center['name'],
@@ -96,6 +140,55 @@ class _DonationCentersPageState extends State<DonationCentersPage> {
           },
         );
       }).toSet();
+    });
+  }
+
+  void _onMapCreated(GoogleMapController controller) {
+    setState(() {
+      _mapController = controller;
+      _updateMarkers();
+    });
+  }
+
+  double _calculateDistance(
+      double lat1, double lon1, double lat2, double lon2) {
+    return Geolocator.distanceBetween(lat1, lon1, lat2, lon2) /
+        1000; // Convert to km
+  }
+
+  void _applyFilters() {
+    String searchQuery = _searchController.text.toLowerCase();
+
+    setState(() {
+      _filteredCenters = _filteredCenters.where((center) {
+        bool matchesSearch =
+            center['name'].toLowerCase().contains(searchQuery) ||
+                center['address'].toLowerCase().contains(searchQuery);
+
+        bool matchesFilter = true;
+        switch (_selectedFilter) {
+          case 'Nearest':
+            matchesFilter = true; // Already sorted by distance
+            break;
+          case 'Available Now':
+            matchesFilter = center['status'] == 'Open';
+            break;
+          case 'Hospitals':
+            matchesFilter = center['type'] == 'Hospital';
+            break;
+          case 'Blood Banks':
+            matchesFilter = center['type'] == 'Blood Bank';
+            break;
+        }
+
+        return matchesSearch && matchesFilter;
+      }).toList();
+
+      // Sort by distance if 'Nearest' is selected
+      if (_selectedFilter == 'Nearest') {
+        _filteredCenters.sort((a, b) =>
+            double.parse(a['distance']).compareTo(double.parse(b['distance'])));
+      }
     });
   }
 
@@ -122,15 +215,17 @@ class _DonationCentersPageState extends State<DonationCentersPage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          _buildSearchBar(),
-          _buildFilters(),
-          Expanded(
-            child: _isListView ? _buildListView() : _buildMapView(),
-          ),
-        ],
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                _buildSearchBar(),
+                _buildFilters(),
+                Expanded(
+                  child: _isListView ? _buildListView() : _buildMapView(),
+                ),
+              ],
+            ),
     );
   }
 
@@ -198,7 +293,8 @@ class _DonationCentersPageState extends State<DonationCentersPage> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
                 side: BorderSide(
-                  color: isSelected ? const Color(0xFFCC2B2B) : Colors.grey[300]!,
+                  color:
+                      isSelected ? const Color(0xFFCC2B2B) : Colors.grey[300]!,
                 ),
               ),
             ),
@@ -220,15 +316,30 @@ class _DonationCentersPageState extends State<DonationCentersPage> {
       myLocationButtonEnabled: true,
       mapToolbarEnabled: false,
       compassEnabled: true,
+      zoomControlsEnabled: true,
+      mapType: MapType.normal,
+      onTap: (_) {
+        // Close any open info windows when tapping the map
+        setState(() {
+          _markers = _markers.map((marker) {
+            return marker.copyWith(
+              infoWindowParam: InfoWindow(
+                title: marker.infoWindow.title,
+                snippet: marker.infoWindow.snippet,
+              ),
+            );
+          }).toSet();
+        });
+      },
     );
   }
 
   Widget _buildListView() {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _centers.length,
+      itemCount: _filteredCenters.length,
       itemBuilder: (context, index) {
-        final center = _centers[index];
+        final center = _filteredCenters[index];
         return Card(
           margin: const EdgeInsets.only(bottom: 16),
           shape: RoundedRectangleBorder(
@@ -302,7 +413,8 @@ class _DonationCentersPageState extends State<DonationCentersPage> {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                          const Icon(Icons.location_on,
+                              size: 16, color: Colors.grey),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -413,7 +525,8 @@ class _DonationCentersPageState extends State<DonationCentersPage> {
                             const SizedBox(height: 8),
                             Row(
                               children: [
-                                Icon(Icons.star, size: 16, color: Colors.amber[700]),
+                                Icon(Icons.star,
+                                    size: 16, color: Colors.amber[700]),
                                 const SizedBox(width: 4),
                                 Text(
                                   '${center['rating']}',
@@ -472,7 +585,8 @@ class _DonationCentersPageState extends State<DonationCentersPage> {
                     'Hours & Availability',
                     [
                       _buildInfoRow(Icons.access_time, center['hours']),
-                      _buildInfoRow(Icons.people, 'Current wait time: ${center['waitTime']}'),
+                      _buildInfoRow(Icons.people,
+                          'Current wait time: ${center['waitTime']}'),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -482,10 +596,12 @@ class _DonationCentersPageState extends State<DonationCentersPage> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: (center['services'] as List<String>).map((service) {
+                        children:
+                            (center['services'] as List<String>).map((service) {
                           return Chip(
                             label: Text(service),
-                            backgroundColor: const Color(0xFFCC2B2B).withOpacity(0.1),
+                            backgroundColor:
+                                const Color(0xFFCC2B2B).withOpacity(0.1),
                             labelStyle: const TextStyle(
                               color: Color(0xFFCC2B2B),
                             ),
@@ -501,7 +617,8 @@ class _DonationCentersPageState extends State<DonationCentersPage> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: (center['bloodTypes'] as List<String>).map((type) {
+                        children:
+                            (center['bloodTypes'] as List<String>).map((type) {
                           return Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -587,4 +704,10 @@ class _DonationCentersPageState extends State<DonationCentersPage> {
       ),
     );
   }
-} 
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+}

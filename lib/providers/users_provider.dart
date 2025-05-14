@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/user.dart';
 import '../services/user_service.dart';
+import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UsersProvider with ChangeNotifier {
   final UserService _userService = UserService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isLoading = false;
   List<User> _eligibleDonors = [];
 
@@ -122,5 +125,68 @@ class UsersProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Stream<DocumentSnapshot> getUserData(String userId) {
+    return _firestore.collection('users').doc(userId).snapshots();
+  }
+
+  Future<void> updateUserProfile({
+    required String userId,
+    String? name,
+    String? phone,
+    String? location,
+    String? emergencyContactName,
+    String? emergencyContactPhone,
+    String? healthNotes,
+    String? religion,
+    bool? isAnonymous,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final Map<String, dynamic> updateData = {
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      if (name != null) updateData['name'] = name;
+      if (phone != null) updateData['phone'] = phone;
+      if (location != null) updateData['location'] = location;
+      if (emergencyContactName != null)
+        updateData['emergencyContactName'] = emergencyContactName;
+      if (emergencyContactPhone != null)
+        updateData['emergencyContactPhone'] = emergencyContactPhone;
+      if (healthNotes != null) updateData['healthNotes'] = healthNotes;
+      if (religion != null) updateData['religion'] = religion;
+      if (isAnonymous != null) updateData['isAnonymous'] = isAnonymous;
+
+      await _firestore.collection('users').doc(userId).update(updateData);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Stream<QuerySnapshot> searchUsers({
+    String? bloodType,
+    String? location,
+    bool? isAnonymous,
+  }) {
+    Query query = _firestore.collection('users');
+
+    if (bloodType != null) {
+      query = query.where('bloodType', isEqualTo: bloodType);
+    }
+
+    if (location != null) {
+      query = query.where('location', isEqualTo: location);
+    }
+
+    if (isAnonymous != null) {
+      query = query.where('isAnonymous', isEqualTo: isAnonymous);
+    }
+
+    return query.snapshots();
   }
 }

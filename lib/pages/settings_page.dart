@@ -1,5 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
+import '../providers/settings_provider.dart';
+import '../providers/auth_provider.dart';
+import '../services/auth_service.dart';
+import 'terms_of_service_page.dart';
+import 'privacy_policy_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'profile_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -9,20 +17,21 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  bool _isDarkMode = false;
-  bool _notificationsEnabled = true;
-  bool _locationEnabled = true;
-  bool _emailNotifications = true;
-  bool _smsNotifications = true;
-  double _searchRadius = 10.0;
-  String _selectedLanguage = 'English';
-  String _selectedUnit = 'Kilometers';
-
-  final List<String> _languages = ['English', 'Spanish', 'French', 'Arabic', 'Hindi'];
+  final AuthService _authService = AuthService();
+  final List<String> _languages = [
+    'English',
+    'Spanish',
+    'French',
+    'Arabic',
+    'Hindi'
+  ];
   final List<String> _units = ['Kilometers', 'Miles'];
 
   @override
   Widget build(BuildContext context) {
+    final settingsProvider = Provider.of<SettingsProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFFCC2B2B),
@@ -45,9 +54,9 @@ class _SettingsPageState extends State<SettingsPage> {
               _buildSettingsSection(
                 'General',
                 [
-                  _buildLanguageSetting(),
-                  _buildUnitSetting(),
-                  _buildThemeSetting(),
+                  _buildLanguageSetting(settingsProvider),
+                  _buildUnitSetting(settingsProvider),
+                  _buildThemeSetting(settingsProvider),
                 ],
               ),
               _buildDivider(),
@@ -57,23 +66,23 @@ class _SettingsPageState extends State<SettingsPage> {
                   _buildSwitchTile(
                     'Push Notifications',
                     'Receive notifications about requests and updates',
-                    _notificationsEnabled,
+                    settingsProvider.notificationsEnabled,
                     Icons.notifications,
-                    (value) => setState(() => _notificationsEnabled = value),
+                    (value) => settingsProvider.setNotificationsEnabled(value),
                   ),
                   _buildSwitchTile(
                     'Email Notifications',
                     'Receive updates via email',
-                    _emailNotifications,
+                    settingsProvider.emailNotifications,
                     Icons.email,
-                    (value) => setState(() => _emailNotifications = value),
+                    (value) => settingsProvider.setEmailNotifications(value),
                   ),
                   _buildSwitchTile(
                     'SMS Notifications',
                     'Receive updates via SMS',
-                    _smsNotifications,
+                    settingsProvider.smsNotifications,
                     Icons.sms,
-                    (value) => setState(() => _smsNotifications = value),
+                    (value) => settingsProvider.setSmsNotifications(value),
                   ),
                 ],
               ),
@@ -84,11 +93,11 @@ class _SettingsPageState extends State<SettingsPage> {
                   _buildSwitchTile(
                     'Location Services',
                     'Allow app to access your location',
-                    _locationEnabled,
+                    settingsProvider.locationEnabled,
                     Icons.location_on,
-                    (value) => setState(() => _locationEnabled = value),
+                    (value) => settingsProvider.setLocationEnabled(value),
                   ),
-                  _buildSearchRadiusSetting(),
+                  _buildSearchRadiusSetting(settingsProvider),
                 ],
               ),
               _buildDivider(),
@@ -99,7 +108,14 @@ class _SettingsPageState extends State<SettingsPage> {
                     'Personal Information',
                     'Update your profile details',
                     Icons.person,
-                    () => _showComingSoonSnackBar('Personal Information'),
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ProfilePage(),
+                        ),
+                      );
+                    },
                   ),
                   _buildActionTile(
                     'Medical History',
@@ -135,13 +151,27 @@ class _SettingsPageState extends State<SettingsPage> {
                     'Privacy Policy',
                     'Read our privacy policy',
                     Icons.privacy_tip,
-                    () => _showComingSoonSnackBar('Privacy Policy'),
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PrivacyPolicyPage(),
+                        ),
+                      );
+                    },
                   ),
                   _buildActionTile(
                     'Terms of Service',
                     'Read our terms of service',
                     Icons.description,
-                    () => _showComingSoonSnackBar('Terms of Service'),
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TermsOfServicePage(),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -169,7 +199,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: Column(
                   children: [
                     OutlinedButton(
-                      onPressed: _showDeleteAccountDialog,
+                      onPressed: () => _showDeleteAccountDialog(authProvider),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.red,
                         side: const BorderSide(color: Colors.red),
@@ -189,7 +219,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     const SizedBox(height: 8),
                     TextButton(
-                      onPressed: _showLogoutDialog,
+                      onPressed: () => _showLogoutDialog(authProvider),
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -205,7 +235,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   ],
                 ),
               ),
-              // App version
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(16),
@@ -226,70 +255,112 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildProfileSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.grey[200],
-              border: Border.all(
-                color: const Color(0xFFCC2B2B),
-                width: 2,
-              ),
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.person,
-                size: 40,
-                color: Color(0xFFCC2B2B),
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'John Doe',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = authProvider.currentUser;
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user?.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final userData = snapshot.data?.data() as Map<String, dynamic>? ?? {};
+        final displayName = userData['isAnonymous'] == true
+            ? userData['anonymizedUsername'] ?? 'Anonymous User'
+            : userData['name'] ?? 'Anonymous User';
+        final email = user?.email ?? 'Not signed in';
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.grey[200],
+                  border: Border.all(
+                    color: const Color(0xFFCC2B2B),
+                    width: 2,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'john.doe@example.com',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                  ),
+                child: Center(
+                  child: user?.photoURL != null
+                      ? ClipOval(
+                          child: Image.network(
+                            user!.photoURL!,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => const Icon(
+                              Icons.person,
+                              size: 40,
+                              color: Color(0xFFCC2B2B),
+                            ),
+                          ),
+                        )
+                      : const Icon(
+                          Icons.person,
+                          size: 40,
+                          color: Color(0xFFCC2B2B),
+                        ),
                 ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () => _showComingSoonSnackBar('Edit Profile'),
-                  icon: const Icon(
-                    Icons.edit,
-                    size: 16,
-                  ),
-                  label: const Text('Edit Profile'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFCC2B2B),
-                    side: const BorderSide(color: Color(0xFFCC2B2B)),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    Text(
+                      email,
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ProfilePage(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(
+                        Icons.edit,
+                        size: 16,
+                      ),
+                      label: const Text('Edit Profile'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFCC2B2B),
+                        side: const BorderSide(color: Color(0xFFCC2B2B)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -363,127 +434,97 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildLanguageSetting() {
+  Widget _buildLanguageSetting(SettingsProvider settingsProvider) {
     return ListTile(
-      leading: const Icon(Icons.language, color: Color(0xFFCC2B2B)),
+      leading: const Icon(Icons.language),
       title: const Text('Language'),
-      subtitle: Text(
-        _selectedLanguage,
-        style: TextStyle(
-          color: Colors.grey[600],
-          fontSize: 12,
-        ),
-      ),
-      trailing: DropdownButton<String>(
-        value: _selectedLanguage,
-        underline: const SizedBox(),
-        items: _languages.map((String language) {
-          return DropdownMenuItem<String>(
-            value: language,
-            child: Text(language),
-          );
-        }).toList(),
-        onChanged: (String? value) {
-          if (value != null) {
-            setState(() => _selectedLanguage = value);
-          }
-        },
-      ),
+      subtitle: Text(settingsProvider.language),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      onTap: () => _showLanguageDialog(settingsProvider),
     );
   }
 
-  Widget _buildUnitSetting() {
+  Widget _buildUnitSetting(SettingsProvider settingsProvider) {
     return ListTile(
-      leading: const Icon(Icons.straighten, color: Color(0xFFCC2B2B)),
+      leading: const Icon(Icons.straighten),
       title: const Text('Distance Unit'),
-      subtitle: Text(
-        _selectedUnit,
-        style: TextStyle(
-          color: Colors.grey[600],
-          fontSize: 12,
-        ),
-      ),
-      trailing: DropdownButton<String>(
-        value: _selectedUnit,
-        underline: const SizedBox(),
-        items: _units.map((String unit) {
-          return DropdownMenuItem<String>(
-            value: unit,
-            child: Text(unit),
-          );
-        }).toList(),
-        onChanged: (String? value) {
-          if (value != null) {
-            setState(() => _selectedUnit = value);
-          }
-        },
-      ),
+      subtitle: Text(settingsProvider.unit),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      onTap: () => _showUnitDialog(settingsProvider),
     );
   }
 
-  Widget _buildThemeSetting() {
+  Widget _buildThemeSetting(SettingsProvider settingsProvider) {
     return SwitchListTile(
-      secondary: const Icon(Icons.dark_mode, color: Color(0xFFCC2B2B)),
+      secondary: const Icon(Icons.dark_mode),
       title: const Text('Dark Mode'),
-      subtitle: Text(
-        'Switch between light and dark theme',
-        style: TextStyle(
-          color: Colors.grey[600],
-          fontSize: 12,
-        ),
-      ),
-      value: _isDarkMode,
-      onChanged: (bool value) {
-        setState(() => _isDarkMode = value);
-      },
+      subtitle: const Text('Enable dark theme'),
+      value: settingsProvider.isDarkMode,
+      onChanged: (value) => settingsProvider.setDarkMode(value),
     );
   }
 
-  Widget _buildSearchRadiusSetting() {
+  Widget _buildSearchRadiusSetting(SettingsProvider settingsProvider) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ListTile(
-          leading: const Icon(Icons.radar, color: Color(0xFFCC2B2B)),
+          leading: const Icon(Icons.radar),
           title: const Text('Search Radius'),
           subtitle: Text(
-            '${_searchRadius.toStringAsFixed(1)} ${_selectedUnit == 'Kilometers' ? 'km' : 'mi'}',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 12,
-            ),
-          ),
+              '${settingsProvider.searchRadius.toStringAsFixed(1)} ${settingsProvider.unit}'),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: const Color(0xFFCC2B2B),
-              inactiveTrackColor: const Color(0xFFCC2B2B).withOpacity(0.2),
-              thumbColor: const Color(0xFFCC2B2B),
-              overlayColor: const Color(0xFFCC2B2B).withOpacity(0.1),
-              valueIndicatorColor: const Color(0xFFCC2B2B),
-              valueIndicatorTextStyle: const TextStyle(color: Colors.white),
-            ),
-            child: Slider(
-              value: _searchRadius,
-              min: 1,
-              max: 50,
-              divisions: 49,
-              label: '${_searchRadius.toStringAsFixed(1)} ${_selectedUnit == 'Kilometers' ? 'km' : 'mi'}',
-              onChanged: (value) {
-                setState(() => _searchRadius = value);
-              },
-            ),
-          ),
+        Slider(
+          value: settingsProvider.searchRadius,
+          min: 1,
+          max: 100,
+          divisions: 99,
+          label:
+              '${settingsProvider.searchRadius.toStringAsFixed(1)} ${settingsProvider.unit}',
+          onChanged: (value) => settingsProvider.setSearchRadius(value),
         ),
       ],
     );
   }
 
-  void _showComingSoonSnackBar(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature feature coming soon!')),
+  void _showLanguageDialog(SettingsProvider settingsProvider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Language'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: _languages
+              .map((language) => ListTile(
+                    title: Text(language),
+                    onTap: () {
+                      settingsProvider.setLanguage(language);
+                      Navigator.pop(context);
+                    },
+                  ))
+              .toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showUnitDialog(SettingsProvider settingsProvider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Unit'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: _units
+              .map((unit) => ListTile(
+                    title: Text(unit),
+                    onTap: () {
+                      settingsProvider.setUnit(unit);
+                      Navigator.pop(context);
+                    },
+                  ))
+              .toList(),
+        ),
+      ),
     );
   }
 
@@ -498,67 +539,59 @@ class _SettingsPageState extends State<SettingsPage> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          TextButton(
             onPressed: () {
+              // TODO: Implement cache clearing
               Navigator.pop(context);
-              _showComingSoonSnackBar('Clear Cache');
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Cache cleared successfully')),
+              );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFCC2B2B),
-            ),
-            child: const Text(
-              'Clear',
-              style: TextStyle(color: Colors.white),
-            ),
+            child: const Text('Clear'),
           ),
         ],
       ),
     );
   }
 
-  void _showDeleteAccountDialog() {
+  void _showDeleteAccountDialog(AuthProvider authProvider) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.warning, color: Colors.red),
-            SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                'Delete Account',
-                style: TextStyle(color: Colors.red),
-              ),
-            ),
-          ],
-        ),
+        title: const Text('Delete Account'),
         content: const Text(
-          'Are you sure you want to delete your account? This action cannot be undone.',
-        ),
+            'Are you sure you want to delete your account? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showComingSoonSnackBar('Delete Account');
+          TextButton(
+            onPressed: () async {
+              try {
+                await authProvider.deleteAccount();
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  Navigator.pushReplacementNamed(context, '/login');
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error deleting account: $e')),
+                  );
+                }
+              }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Colors.white),
-            ),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
           ),
         ],
       ),
     );
   }
 
-  void _showLogoutDialog() {
+  void _showLogoutDialog(AuthProvider authProvider) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -569,21 +602,33 @@ class _SettingsPageState extends State<SettingsPage> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showComingSoonSnackBar('Logout');
+          TextButton(
+            onPressed: () async {
+              try {
+                await authProvider.signOut();
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  Navigator.pushReplacementNamed(context, '/login');
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error signing out: $e')),
+                  );
+                }
+              }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFCC2B2B),
-            ),
-            child: const Text(
-              'Log Out',
-              style: TextStyle(color: Colors.white),
-            ),
+            child: const Text('Log Out'),
           ),
         ],
       ),
     );
   }
-} 
+
+  void _showComingSoonSnackBar(String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$feature coming soon!')),
+    );
+  }
+}

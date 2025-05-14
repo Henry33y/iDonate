@@ -63,7 +63,7 @@ class DefaultFirebaseOptions {
     appId: '1:655086831488:ios:f2a4c854c16da554a9e365',
     messagingSenderId: '655086831488',
     projectId: 'idonate-c030e',
-    storageBucket: 'idonate-c030e.firebasestorage.app',
+    storageBucket: 'idonate-c030e.firebasestoragey.app',
     iosBundleId: 'com.example.idonate',
   );
 

@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class DonationsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseAuth auth = FirebaseAuth.instance;
 
   // Collection references
   CollectionReference get donations => _firestore.collection('donations');
@@ -28,7 +28,7 @@ class DonationsService {
     DateTime? lastMealTime,
   }) async {
     print('Creating donation...');
-    final user = _auth.currentUser;
+    final user = auth.currentUser;
     if (user == null) {
       print('Error: User not authenticated');
       throw Exception('User not authenticated');
@@ -64,6 +64,15 @@ class DonationsService {
     try {
       final docRef = await donations.add(donationData);
       print('Donation created successfully with ID: ${docRef.id}');
+
+      // Update user's donation count
+      await users.doc(user.uid).update({
+        'donationCount': FieldValue.increment(1),
+        'livesSaved':
+            FieldValue.increment(3), // Assuming each donation saves 3 lives
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      print('User donation count updated successfully');
     } catch (e) {
       print('Error creating donation: $e');
       rethrow;
@@ -121,6 +130,32 @@ class DonationsService {
       return doc;
     } catch (e) {
       print('Error getting donation: $e');
+      rethrow;
+    }
+  }
+
+  // Count and update user's donations
+  Future<void> updateUserDonationCount(String userId) async {
+    print('Updating donation count for user: $userId');
+    try {
+      // Get all donations for the user
+      final querySnapshot = await donations
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      // Count the donations
+      final donationCount = querySnapshot.docs.length;
+      final livesSaved = donationCount * 3; // Assuming each donation saves 3 lives
+
+      // Update user document with the correct count
+      await users.doc(userId).update({
+        'donationCount': donationCount,
+        'livesSaved': livesSaved,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      print('User donation count updated to: $donationCount');
+    } catch (e) {
+      print('Error updating user donation count: $e');
       rethrow;
     }
   }
